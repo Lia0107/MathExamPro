@@ -14,7 +14,7 @@ public class Question {
     public String getQuestion(){
         return  question;
     }
-    public String[] getOptions{
+    public String[] getOptions() {
         return options;
     }
     public int getCorrectAnswer(){
