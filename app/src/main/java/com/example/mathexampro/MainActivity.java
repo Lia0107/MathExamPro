@@ -102,15 +102,10 @@ public class MainActivity extends Activity {
             optionsGroup.addView(rb);
         }
 
-        // Clear selection for skipped questions, restore answer for answered questions
-        if (submitted[currentIndex] && userAnswer[currentIndex] == -1) {
-            // This is a skipped question
-            optionsGroup.clearCheck();
-        } else if (userAnswer[currentIndex] != -1) {
-            // This is an answered question
+        // Check the previously selected answer if it exists
+        if (userAnswer[currentIndex] != -1) {
             optionsGroup.check(userAnswer[currentIndex]);
         } else {
-            // This is a new question
             optionsGroup.clearCheck();
         }
 
@@ -127,7 +122,7 @@ public class MainActivity extends Activity {
 
     private void disableQuestionContainer() {
         questionContainer.setAlpha(0.6f);  // Make it look disabled
-        questionContainer.setEnabled(false);
+        // Only disable the radio buttons, not the container
         for (int i = 0; i < optionsGroup.getChildCount(); i++) {
             optionsGroup.getChildAt(i).setEnabled(false);
         }
@@ -135,7 +130,7 @@ public class MainActivity extends Activity {
 
     private void enableQuestionContainer() {
         questionContainer.setAlpha(1.0f);  // Make it look enabled
-        questionContainer.setEnabled(true);
+        // Only enable the radio buttons, not the container
         for (int i = 0; i < optionsGroup.getChildCount(); i++) {
             optionsGroup.getChildAt(i).setEnabled(true);
         }
@@ -212,14 +207,10 @@ public class MainActivity extends Activity {
     }
 
     private void submitExam() {
-        // Verify last question is answered
-        if (currentIndex == 6 && !submitted[currentIndex] && userAnswer[currentIndex] != -1) {
-            // Auto-submit last question if it has an answer
-            submitted[currentIndex] = true;
-            // Disable radio buttons
-            for (int i = 0; i < optionsGroup.getChildCount(); i++) {
-                optionsGroup.getChildAt(i).setEnabled(false);
-            }
+        // If timer is still running, cancel it
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
         }
 
         // Calculate score
@@ -233,7 +224,7 @@ public class MainActivity extends Activity {
         examFinished = true;
         
         // Show success message and enable result summary button
-        Toast.makeText(this, "Exam successfully submitted!", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Exam submitted!", Toast.LENGTH_SHORT).show();
         
         // Hide finish button and show result button
         finishBtn.setVisibility(View.GONE);
@@ -246,10 +237,9 @@ public class MainActivity extends Activity {
         skipBtn.setVisibility(View.GONE);
         submitBtn.setVisibility(View.GONE);
         
-        // Stop timer if running
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
+        // Disable the current question if it's not already disabled
+        if (!submitted[currentIndex]) {
+            disableQuestionContainer();
         }
     }
 
@@ -311,16 +301,12 @@ public class MainActivity extends Activity {
                 long seconds = (millisUntilFinished % 60000) / 1000;
                 timerText.setText(String.format("Time left: %d:%02d", minutes, seconds));
             }
+
             public void onFinish() {
-                Toast.makeText(MainActivity.this, "Time's up! Auto-submitting...", Toast.LENGTH_SHORT).show();
-                examFinished = true;
-                for (int i = 0; i < submitted.length; i++) {
-                    if (!submitted[i]) {
-                        submitted[i] = true;
-                        userAnswer[i] = -1;
-                    }
-                }
-                showResults();
+                timerText.setText("Time's up!");
+                // Auto-submit the exam
+                submitExam();
+                Toast.makeText(MainActivity.this, "Time's up! Exam submitted.", Toast.LENGTH_SHORT).show();
             }
         }.start();
     }
