@@ -12,6 +12,8 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Switch;
+import android.widget.LinearLayout;
+import android.graphics.Color;
 
 import java.util.Arrays;
 import java.util.List;
@@ -29,6 +31,7 @@ public class MainActivity extends Activity {
     private RadioGroup optionsGroup;
     private Button submitBtn, nextBtn, prevBtn, skipBtn, resetBtn, resultBtn, finishBtn;
     private Switch timerSwitch;
+    private LinearLayout questionContainer;
     private boolean timerEnabled = false;
     private CountDownTimer timer;
 
@@ -45,6 +48,7 @@ public class MainActivity extends Activity {
     }
 
     private void setupViews() {
+        questionContainer = findViewById(R.id.questionContainer);
         question_text = findViewById(R.id.question_text);
         skipCounter = findViewById(R.id.skipCounter);
         optionsGroup = findViewById(R.id.optionsGroup);
@@ -95,19 +99,68 @@ public class MainActivity extends Activity {
             RadioButton rb = new RadioButton(this);
             rb.setText(q.getOptions()[i]);
             rb.setId(i);
-            rb.setEnabled(!submitted[currentIndex]); // Disable if already submitted
             optionsGroup.addView(rb);
         }
 
-        // Restore previous answer if exists
-        if (userAnswer[currentIndex] != -1) {
+        // Clear selection for skipped questions, restore answer for answered questions
+        if (submitted[currentIndex] && userAnswer[currentIndex] == -1) {
+            // This is a skipped question
+            optionsGroup.clearCheck();
+        } else if (userAnswer[currentIndex] != -1) {
+            // This is an answered question
             optionsGroup.check(userAnswer[currentIndex]);
         } else {
+            // This is a new question
             optionsGroup.clearCheck();
+        }
+
+        // Update question container state
+        if (submitted[currentIndex]) {
+            disableQuestionContainer();
+        } else {
+            enableQuestionContainer();
         }
 
         updateNavigationButtons();
         skipCounter.setText("Skips left: " + skipsLeft);
+    }
+
+    private void disableQuestionContainer() {
+        questionContainer.setAlpha(0.6f);  // Make it look disabled
+        questionContainer.setEnabled(false);
+        for (int i = 0; i < optionsGroup.getChildCount(); i++) {
+            optionsGroup.getChildAt(i).setEnabled(false);
+        }
+    }
+
+    private void enableQuestionContainer() {
+        questionContainer.setAlpha(1.0f);  // Make it look enabled
+        questionContainer.setEnabled(true);
+        for (int i = 0; i < optionsGroup.getChildCount(); i++) {
+            optionsGroup.getChildAt(i).setEnabled(true);
+        }
+    }
+
+    private void submitAnswer() {
+        int selected = optionsGroup.getCheckedRadioButtonId();
+        if (selected == -1) {
+            Toast.makeText(this, "Please select an answer", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Mark question as submitted
+        submitted[currentIndex] = true;
+        userAnswer[currentIndex] = selected;
+
+        // Disable the question container
+        disableQuestionContainer();
+
+        updateNavigationButtons();
+
+        // Auto-advance to next question if not on the last question
+        if (currentIndex < 6) {
+            moveToNextQuestion(1);
+        }
     }
 
     private void updateNavigationButtons() {
@@ -136,25 +189,6 @@ public class MainActivity extends Activity {
         resetBtn.setVisibility(examFinished ? View.VISIBLE : View.GONE);
     }
 
-    private void submitAnswer() {
-        int selected = optionsGroup.getCheckedRadioButtonId();
-        if (selected == -1) {
-            Toast.makeText(this, "Please select an answer", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Mark question as submitted
-        submitted[currentIndex] = true;
-        userAnswer[currentIndex] = selected;
-
-        // Disable radio buttons
-        for (int i = 0; i < optionsGroup.getChildCount(); i++) {
-            optionsGroup.getChildAt(i).setEnabled(false);
-        }
-
-        updateNavigationButtons();
-    }
-
     private void moveToNextQuestion(int direction) {
         currentIndex += direction;
         if (currentIndex < 0) currentIndex = 0;
@@ -167,6 +201,12 @@ public class MainActivity extends Activity {
             skipsLeft--;
             submitted[currentIndex] = true;
             userAnswer[currentIndex] = -1;
+
+            // Disable all radio buttons for the current question
+            for (int i = 0; i < optionsGroup.getChildCount(); i++) {
+                optionsGroup.getChildAt(i).setEnabled(false);
+            }
+
             updateNavigationButtons();
         }
     }
