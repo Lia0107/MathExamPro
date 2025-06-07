@@ -75,6 +75,7 @@ public class MainActivity extends Activity {
         // Set up radio group listener to save temporary answers
         optionsGroup.setOnCheckedChangeListener((group, checkedId) -> {
             if (checkedId != -1 && !submitted[currentIndex]) {
+                // Save the temporary selection even if not submitted
                 userAnswer[currentIndex] = checkedId;
                 updateNavigationButtons();
             }
@@ -92,27 +93,45 @@ public class MainActivity extends Activity {
     private void updateQuestion() {
         Question q = questionList.get(currentIndex);
         question_text.setText("Q" + (currentIndex + 1) + ":" + q.getQuestion());
-        optionsGroup.removeAllViews();
         
-        // Create radio buttons for options
-        for (int i = 0; i < q.getOptions().length; i++) {
-            RadioButton rb = new RadioButton(this);
-            rb.setText(q.getOptions()[i]);
-            rb.setId(i);
-            optionsGroup.addView(rb);
+        // Only update radio buttons if the content is different
+        boolean needsUpdate = optionsGroup.getChildCount() != q.getOptions().length;
+        if (!needsUpdate) {
+            // Check if any option text is different
+            for (int i = 0; i < q.getOptions().length; i++) {
+                RadioButton rb = (RadioButton) optionsGroup.getChildAt(i);
+                if (!rb.getText().toString().equals(q.getOptions()[i])) {
+                    needsUpdate = true;
+                    break;
+                }
+            }
         }
 
-        // Check the previously selected answer if it exists
-        if (userAnswer[currentIndex] != -1) {
-            optionsGroup.check(userAnswer[currentIndex]);
-        } else {
-            optionsGroup.clearCheck();
+        // Only recreate or update radio buttons if necessary
+        if (needsUpdate) {
+            optionsGroup.removeAllViews();
+            for (int i = 0; i < q.getOptions().length; i++) {
+                RadioButton rb = new RadioButton(this);
+                rb.setText(q.getOptions()[i]);
+                rb.setId(i);
+                optionsGroup.addView(rb);
+            }
         }
 
-        // Update question container state
+        // Update the state without recreating views
+        optionsGroup.clearCheck();
+        
         if (submitted[currentIndex]) {
+            // Show submitted answer and disable
+            if (userAnswer[currentIndex] != -1) {
+                optionsGroup.check(userAnswer[currentIndex]);
+            }
             disableQuestionContainer();
         } else {
+            // Show temporary selection for unsubmitted questions
+            if (userAnswer[currentIndex] != -1) {
+                optionsGroup.check(userAnswer[currentIndex]);
+            }
             enableQuestionContainer();
         }
 
@@ -150,12 +169,8 @@ public class MainActivity extends Activity {
         // Disable the question container
         disableQuestionContainer();
 
+        // Update navigation buttons to show next/prev options
         updateNavigationButtons();
-
-        // Auto-advance to next question if not on the last question
-        if (currentIndex < 6) {
-            moveToNextQuestion(1);
-        }
     }
 
     private void updateNavigationButtons() {
@@ -202,6 +217,10 @@ public class MainActivity extends Activity {
                 optionsGroup.getChildAt(i).setEnabled(false);
             }
 
+            // Immediately update the skip counter display
+            skipCounter.setText("Skips left: " + skipsLeft);
+            
+            // Update navigation buttons
             updateNavigationButtons();
         }
     }
